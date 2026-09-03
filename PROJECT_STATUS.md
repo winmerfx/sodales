@@ -4,8 +4,8 @@ Read this first, every session. Update it at the end of every meaningful piece o
 
 # Current Phase
 
-**Phase 1 — Foundation and SODALES design system.** Built, verified and pushed to
-`github.com/winmerfx/sodales`. One step remains: the Vercel deploy.
+**Phase 2 — Public storefront.** Built and verified locally on seed data. Phase 1 is
+complete and deployed.
 
 # Completed
 
@@ -13,7 +13,7 @@ Read this first, every session. Update it at the end of every meaningful piece o
 `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/DESIGN_SYSTEM.md`, `docs/ROADMAP.md`,
 `docs/AGENT_RULES.md`, `.env.example`.
 
-**Phase 1 — Foundation.**
+**Phase 1 — Foundation.** Deployed to Vercel.
 
 - Next.js 16.3.4, React 19.2.8, TypeScript, Tailwind v4, ESLint. App Router, no `src/`.
 - `styles/brand-tokens.css` — the only file permitted to contain a raw hex. Brand constants
@@ -44,15 +44,36 @@ Read this first, every session. Update it at the end of every meaningful piece o
   validation accepts the live values.
 - Client bundle scanned (21 files): `SUPABASE_SERVICE_ROLE_KEY` does not appear in it.
 
+**Phase 2 — Public storefront.**
+
+- `lib/products/types.ts` — domain types mirroring `docs/DATABASE.md` §3, in snake_case so
+  Supabase rows drop straight in at Phase 4 with no mapping layer.
+- `lib/products/seed.ts` — the seven placeholder products with categories, offers, assets and
+  bundle membership. Deleted in Phase 4.
+- `lib/products/queries.ts` — the data access layer Phase 4 repoints at Supabase. All async,
+  returning the shapes the real queries will return, so no page changes.
+- `lib/products/filters.ts` — URL filter state with an allowlist parser; unknown values are
+  discarded rather than passed through.
+- `ProductCard`, `ProductArtwork` (placeholder), `Badge`, `EmptyState`, `ProductFilters`,
+  `ProductSearch`.
+- Routes: homepage, `/products` with search + filters + sort, `/products/[slug]`, `/pricing`,
+  `sitemap.xml`, `robots.txt`.
+- Filters are `<Link>` navigations, not client state — every view has a shareable URL and
+  works without JavaScript. Only the search box is a Client Component.
+- Verified at runtime against a production server: all filter, search, sort and combined-filter
+  counts correct; unknown `type` params discarded; empty state renders; canonical and OG tags
+  correct on product pages; 7 product pages prerendered.
+
 # In Progress
 
-Phase 1 awaiting the Vercel deploy, which is the last item in its definition of done.
+Nothing.
 
 # Next Recommended Task
 
-1. Import the repo into Vercel and add the four environment variables — closes Phase 1.
-2. Then **Phase 2 — Public storefront** (`docs/ROADMAP.md`), starting with
-   `lib/products/types.ts` mirroring the schema in `docs/DATABASE.md`.
+**Phase 3 — Authentication** (`docs/ROADMAP.md`): Supabase Auth, signup/login/reset, session
+middleware, `profiles` table with the `role` column protection, and the dashboard shell.
+
+Phase 3 is the first phase that writes a migration, so read `docs/DATABASE.md` §5 first.
 
 # Decisions Made
 
@@ -94,18 +115,20 @@ them); launch catalog; membership plan name, price and inclusions.
 - The type scale assumes Inter. Licensing Neue Haas Grotesk later means re-checking it against
   different metrics.
 - `SUPPORT_EMAIL` falls back to `support@example.com` until set.
-- Not yet verified in a browser at 375 / 768 / 1440, or by tabbing the header with a keyboard.
-  Do this once the Vercel URL exists.
+- Not yet verified in a browser at 375 / 768 / 1440, or by tabbing through with a keyboard.
+  Runtime checks so far are HTML-level only.
+- Product artwork is a placeholder composition, not real screenshots. Real imagery is blocked
+  on the launch catalog decision.
+- `q=` search is a naive substring match over name, tagline and description. Phase 4 replaces
+  it with the `search_vector` GIN index.
 
 # Manual Setup Required
 
-**Blocking Phase 1 completion:**
+**Nothing blocking right now.** Phase 3 needs no new accounts — it uses the existing Supabase
+project. Manual steps arrive at its end: enabling the Email provider, setting the auth redirect
+URLs, and promoting your own account to admin with one SQL statement.
 
-1. **Vercel** — import `winmerfx/sodales`, add the four environment variables under
-   **Settings → Environment Variables**, and deploy. Set `NEXT_PUBLIC_SITE_URL` to the Vercel
-   URL there, not `localhost`.
-
-Done: `.env.local` created and validated; GitHub repo connected and pushed.
+Done: `.env.local` created and validated; GitHub connected and pushed; Vercel deployed.
 
 **Later phases:** payment provider account (5), AI provider key with a billing limit (8),
 PostHog project and Resend domain verification (9), custom domain and production Supabase
@@ -132,5 +155,5 @@ password to the entire database.
 
 # Last Updated
 
-2026-09-04 — Phase 1 built, verified against real credentials, and pushed to GitHub. Awaiting
-the Vercel deploy.
+2026-09-04 — Phase 1 deployed. Phase 2 storefront built on seed data; build, typecheck, lint
+and runtime filter checks all pass.
