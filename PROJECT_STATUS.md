@@ -4,8 +4,8 @@ Read this first, every session. Update it at the end of every meaningful piece o
 
 # Current Phase
 
-**Phase 1 — Foundation and SODALES design system.** Code complete and verified locally.
-Not yet pushed to GitHub or deployed to Vercel.
+**Phase 1 — Foundation and SODALES design system.** Built, verified and pushed to
+`github.com/winmerfx/sodales`. One step remains: the Vercel deploy.
 
 # Completed
 
@@ -38,16 +38,19 @@ Not yet pushed to GitHub or deployed to Vercel.
 - Base layer: visible `:focus-visible` ring, `prefers-reduced-motion` block, selection colors,
   media constraints.
 - `npm run typecheck` and `npm run lint` scripts added.
-- Git repository initialized on `main`; first commit staged with only `.env.example` among env
-  files.
+- Git repository initialized on `main` and pushed to `github.com/winmerfx/sodales`. 37 files
+  on the remote; `.env.local` is not among them.
+- Verified with real credentials: `next build` passes with no `SKIP_ENV_VALIDATION`, so env
+  validation accepts the live values.
+- Client bundle scanned (21 files): `SUPABASE_SERVICE_ROLE_KEY` does not appear in it.
 
 # In Progress
 
-Nothing. Phase 1 is blocked on two owner actions (below) before it can be called done.
+Phase 1 awaiting the Vercel deploy, which is the last item in its definition of done.
 
 # Next Recommended Task
 
-1. Push to GitHub and connect Vercel — closes Phase 1's definition of done.
+1. Import the repo into Vercel and add the four environment variables — closes Phase 1.
 2. Then **Phase 2 — Public storefront** (`docs/ROADMAP.md`), starting with
    `lib/products/types.ts` mirroring the schema in `docs/DATABASE.md`.
 
@@ -91,20 +94,18 @@ them); launch catalog; membership plan name, price and inclusions.
 - The type scale assumes Inter. Licensing Neue Haas Grotesk later means re-checking it against
   different metrics.
 - `SUPPORT_EMAIL` falls back to `support@example.com` until set.
-- The build has only been verified with `SKIP_ENV_VALIDATION=1`. Once `.env.local` holds real
-  values, run a plain `npm run build` to confirm validation passes with them.
+- Not yet verified in a browser at 375 / 768 / 1440, or by tabbing the header with a keyboard.
+  Do this once the Vercel URL exists.
 
 # Manual Setup Required
 
 **Blocking Phase 1 completion:**
 
-1. **Create `.env.local`** in the project root — copy `.env.example` and fill in the three
-   Supabase values from **Supabase → Project Settings → API**. Do not paste secrets into chat;
-   this file is git-ignored.
-2. **Provide the GitHub repository URL** so the remote can be added and the first commit
-   pushed.
-3. **Vercel** — after the push, import the repo and add the same three variables under
-   **Settings → Environment Variables**, then deploy.
+1. **Vercel** — import `winmerfx/sodales`, add the four environment variables under
+   **Settings → Environment Variables**, and deploy. Set `NEXT_PUBLIC_SITE_URL` to the Vercel
+   URL there, not `localhost`.
+
+Done: `.env.local` created and validated; GitHub repo connected and pushed.
 
 **Later phases:** payment provider account (5), AI provider key with a billing limit (8),
 PostHog project and Resend domain verification (9), custom domain and production Supabase
@@ -131,4 +132,5 @@ password to the entire database.
 
 # Last Updated
 
-2026-09-04 — Phase 1 foundation built; build, typecheck and lint pass. Awaiting push and deploy.
+2026-09-04 — Phase 1 built, verified against real credentials, and pushed to GitHub. Awaiting
+the Vercel deploy.
