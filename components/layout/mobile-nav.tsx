@@ -4,6 +4,7 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { AccountLink } from "@/components/layout/account-link";
 import { Button } from "@/components/ui/button";
 import { primaryNav } from "@/lib/config/brand";
 
@@ -99,15 +100,7 @@ export function MobileNav() {
           </nav>
 
           <div className="flex flex-col gap-3 border-t border-border px-5 py-6">
-            <Button
-              href="/login"
-              variant="secondary"
-              size="lg"
-              fullWidth
-              onClick={close}
-            >
-              Sign in
-            </Button>
+            <AccountLink fullWidth onNavigate={close} />
             <Button href="/products" size="lg" fullWidth onClick={close}>
               Explore products
             </Button>

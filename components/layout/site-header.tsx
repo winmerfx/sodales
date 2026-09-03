@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { AccountLink } from "@/components/layout/account-link";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
@@ -47,14 +48,9 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <Button
-              href="/login"
-              variant="ghost"
-              size="sm"
-              className="hidden lg:inline-flex"
-            >
-              Sign in
-            </Button>
+            <span className="hidden lg:inline-flex">
+              <AccountLink />
+            </span>
             <Button href="/products" size="sm" className="hidden sm:inline-flex">
               Explore products
             </Button>

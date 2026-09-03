@@ -4,8 +4,9 @@ Read this first, every session. Update it at the end of every meaningful piece o
 
 # Current Phase
 
-**Phase 2 — Public storefront.** Built and verified locally on seed data. Phase 1 is
-complete and deployed.
+**Phase 3 — Authentication.** Code complete and verified locally. **Blocked on one manual
+step: migration `0001_profiles.sql` has not been run against Supabase**, so signup and login
+cannot work until it is.
 
 # Completed
 
@@ -44,7 +45,7 @@ complete and deployed.
   validation accepts the live values.
 - Client bundle scanned (21 files): `SUPABASE_SERVICE_ROLE_KEY` does not appear in it.
 
-**Phase 2 — Public storefront.**
+**Phase 2 — Public storefront.** Deployed.
 
 - `lib/products/types.ts` — domain types mirroring `docs/DATABASE.md` §3, in snake_case so
   Supabase rows drop straight in at Phase 4 with no mapping layer.
@@ -64,16 +65,39 @@ complete and deployed.
   counts correct; unknown `type` params discarded; empty state renders; canonical and OG tags
   correct on product pages; 7 product pages prerendered.
 
+**Phase 3 — Authentication.**
+
+- `supabase/migrations/0001_profiles.sql` — first migration. Creates `user_role`, `profiles`,
+  the signup trigger, `is_admin()`, RLS policies, and both layers of role protection.
+  **Not yet applied.**
+- `middleware.ts` — session refresh plus coarse redirects for `/dashboard` and `/admin`.
+- `lib/auth/` — `getUser`, `getProfile`, `requireUser`, `requireProfile`, `requireAdmin`.
+  Uses `getUser()` rather than `getSession()`, which does not verify the cookie.
+- `lib/validation/auth.ts` — zod schemas. Password rule is length-only (10+); composition
+  rules push people toward weaker, more predictable passwords.
+- Routes: `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`,
+  and a guarded `/admin` placeholder proving the authorization boundary.
+- Dashboard shell: overview, library, tools, membership, downloads, account — each with a
+  designed empty state naming the phase that fills it.
+- Account page edits name and marketing opt-in. Password changes go through an emailed link,
+  not an in-session form.
+- `AccountLink` is a Client Component on purpose: reading the session in the header would call
+  `cookies()` and drop the homepage and every product page out of static rendering.
+- Verified at runtime: `/dashboard`, `/dashboard/*`, `/admin` and `/reset-password` all 307 to
+  `/login?next=…` when anonymous; public routes 200; `/auth/callback` without a code redirects
+  to `/login?error=missing_code`. Homepage and product pages still render statically.
+
 # In Progress
 
-Nothing.
+Phase 3 cannot be fully verified until the migration is applied — signup writes to `profiles`
+via a trigger that does not exist yet.
 
 # Next Recommended Task
 
-**Phase 3 — Authentication** (`docs/ROADMAP.md`): Supabase Auth, signup/login/reset, session
-middleware, `profiles` table with the `role` column protection, and the dashboard shell.
-
-Phase 3 is the first phase that writes a migration, so read `docs/DATABASE.md` §5 first.
+1. **Apply `supabase/migrations/0001_profiles.sql`** and configure auth URLs (see Manual Setup).
+2. Verify signup → confirmation email → login → dashboard, and confirm a non-admin visiting
+   `/admin` lands on `/dashboard`.
+3. Then **Phase 4 — Product database and admin**, which builds directly on this schema.
 
 # Decisions Made
 
@@ -121,12 +145,27 @@ them); launch catalog; membership plan name, price and inclusions.
   on the launch catalog decision.
 - `q=` search is a naive substring match over name, tagline and description. Phase 4 replaces
   it with the `search_vector` GIN index.
+- Signup, login, password reset and the role guard are **unverified against a real database** —
+  the migration has not been applied. Only the anonymous redirect paths have been tested.
+- The `/auth/callback` open-redirect guard was not exercised end to end: the test request was
+  rejected at code exchange before reaching the redirect. The check itself is a same-origin
+  path test and was reviewed, not proven.
 
 # Manual Setup Required
 
-**Nothing blocking right now.** Phase 3 needs no new accounts — it uses the existing Supabase
-project. Manual steps arrive at its end: enabling the Email provider, setting the auth redirect
-URLs, and promoting your own account to admin with one SQL statement.
+**Blocking Phase 3 completion — all in the Supabase dashboard:**
+
+1. **Run the migration.** Open **SQL Editor → New query**, paste the entire contents of
+   `supabase/migrations/0001_profiles.sql`, and Run. It only creates things; it drops nothing.
+2. **Authentication → Providers → Email** — confirm it is enabled. Leave "Confirm email" on.
+3. **Authentication → URL Configuration** — set **Site URL** to your Vercel URL, and add both
+   `http://localhost:3000/**` and `https://<your-vercel-url>/**` to **Redirect URLs**.
+   Confirmation and reset links fail silently without this.
+4. **After signing up**, promote yourself in **SQL Editor**:
+   ```sql
+   update public.profiles set role = 'admin' where email = 'you@example.com';
+   ```
+   This is the only time a role is set by hand. There is no self-service path to admin.
 
 Done: `.env.local` created and validated; GitHub connected and pushed; Vercel deployed.
 
@@ -155,5 +194,5 @@ password to the entire database.
 
 # Last Updated
 
-2026-09-04 — Phase 1 deployed. Phase 2 storefront built on seed data; build, typecheck, lint
-and runtime filter checks all pass.
+2026-09-04 — Phase 3 authentication built. Build, typecheck, lint and anonymous-guard runtime
+checks pass. Awaiting migration 0001 to verify against a real database.
