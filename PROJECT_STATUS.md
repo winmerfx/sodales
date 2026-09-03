@@ -107,6 +107,13 @@ database, and the storefront is still reading placeholder seed data.
 - `tsconfig.json` no longer includes `.next/dev/types`; it and `.next/types` declare the same
   globals and produced phantom errors whenever they drifted.
 
+**Demo readiness pass.** Added the four routes the navigation linked to but that did not
+exist (`/resources`, `/privacy`, `/terms`, `/refunds`), plus a branded 404. Legal pages are
+explicitly-labelled placeholders listing what each policy must cover — deliberately not
+invented policy text, which customers and the payment provider would rely on.
+
+Crawled every internal link on the public site: 40 unique links, zero 404s or 500s.
+
 # In Progress
 
 Nothing. Everything buildable without database access is built.
@@ -164,7 +171,12 @@ them); launch catalog; membership plan name, price and inclusions.
 - `docs/DESIGN_SYSTEM.md` §8 is written from the brief alone; reference images not supplied.
 - The type scale assumes Inter. Licensing Neue Haas Grotesk later means re-checking it against
   different metrics.
-- `SUPPORT_EMAIL` falls back to `support@example.com` until set.
+- `SUPPORT_EMAIL` falls back to `support@example.com` until set — it is shown in the footer
+  and on every policy page, so set it before showing the site to anyone.
+- Signup and login **dead-end on the deployed site**: an account is created in Supabase Auth
+  but the `profiles` trigger does not exist, so the dashboard bounces back to
+  `/login?error=profile_missing`. Applying `0001_profiles.sql` fixes this. Until then, demo
+  the public storefront only.
 - Not yet verified in a browser at 375 / 768 / 1440, or by tabbing through with a keyboard.
   Runtime checks so far are HTML-level only.
 - Product artwork is a placeholder composition, not real screenshots. Real imagery is blocked
