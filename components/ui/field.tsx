@@ -114,3 +114,134 @@ export function FormMessage({
     </p>
   );
 }
+
+/** Shared wrapper so label, hint and error markup stay identical across controls. */
+function FieldShell({
+  label,
+  name,
+  errors,
+  hint,
+  className,
+  children,
+}: {
+  label: string;
+  name: string;
+  errors?: string[];
+  hint?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  const hasError = Boolean(errors?.length);
+
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      <label htmlFor={name} className="text-body-sm font-medium text-foreground">
+        {label}
+      </label>
+      {children}
+      {hint ? (
+        <p id={`${name}-hint`} className="text-body-sm text-subtle-foreground">
+          {hint}
+        </p>
+      ) : null}
+      {hasError ? (
+        <p id={`${name}-error`} className="text-body-sm text-danger">
+          {errors?.[0]}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const controlClasses =
+  "rounded-sm border bg-surface px-3.5 text-body-sm text-foreground placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
+export function SelectField({
+  label,
+  name,
+  options,
+  defaultValue,
+  errors,
+  hint,
+  className,
+}: {
+  label: string;
+  name: string;
+  options: { value: string; label: string }[];
+  defaultValue?: string;
+  errors?: string[];
+  hint?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <FieldShell
+      label={label}
+      name={name}
+      errors={errors}
+      hint={hint}
+      className={className}
+    >
+      <select
+        id={name}
+        name={name}
+        defaultValue={defaultValue}
+        aria-invalid={errors?.length ? true : undefined}
+        className={cn(
+          controlClasses,
+          "h-11",
+          errors?.length ? "border-danger" : "border-border-strong",
+        )}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </FieldShell>
+  );
+}
+
+export function TextareaField({
+  label,
+  name,
+  rows = 4,
+  defaultValue,
+  errors,
+  hint,
+  placeholder,
+  className,
+}: {
+  label: string;
+  name: string;
+  rows?: number;
+  defaultValue?: string;
+  errors?: string[];
+  hint?: ReactNode;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <FieldShell
+      label={label}
+      name={name}
+      errors={errors}
+      hint={hint}
+      className={className}
+    >
+      <textarea
+        id={name}
+        name={name}
+        rows={rows}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        aria-invalid={errors?.length ? true : undefined}
+        className={cn(
+          controlClasses,
+          "py-2.5 leading-relaxed",
+          errors?.length ? "border-danger" : "border-border-strong",
+        )}
+      />
+    </FieldShell>
+  );
+}

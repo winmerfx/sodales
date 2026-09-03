@@ -378,6 +378,7 @@ stays server-side.
 | `NEXT_PUBLIC_POSTHOG_HOST` | Yes — safe | Analytics |
 | `SENTRY_DSN` | Yes — safe | Error monitoring |
 | `ADMIN_EMAIL` | **NO** | Bootstrapping the first admin |
+| `PRODUCTS_SOURCE` | Not secret | **Temporary.** `database` reads the catalog from Postgres; unset uses the seed module. Deleted once the switch is verified. |
 
 Env vars are parsed and validated once at startup through a zod schema in `lib/config/env.ts`.
 A missing or malformed variable fails the build loudly rather than producing a confusing

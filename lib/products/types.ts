@@ -135,6 +135,15 @@ export const FILTERABLE_PRODUCT_TYPES: ProductType[] = [
 
 export type SortOption = "featured" | "newest" | "price_asc" | "price_desc";
 
+/** Catalog filter state. Lives here so queries and filters do not import each other. */
+export type ProductFilters = {
+  q?: string;
+  category?: string;
+  type?: ProductType;
+  price?: "free" | "paid";
+  sort?: SortOption;
+};
+
 export const SORT_LABELS: Record<SortOption, string> = {
   featured: "Featured",
   newest: "Newest",

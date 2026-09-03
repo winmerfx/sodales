@@ -1,160 +1,47 @@
-import { seedProducts, categories as seedCategories } from "@/lib/products/seed";
-import {
-  defaultOffer,
-  isFree,
-  type Category,
-  type ProductType,
-  type ProductWithRelations,
-  type SortOption,
-} from "@/lib/products/types";
+import "server-only";
+
+import * as db from "@/lib/products/queries.db";
+import * as seed from "@/lib/products/queries.seed";
 
 /**
- * The storefront's data access layer.
+ * Catalog data source.
  *
- * Phase 4 replaces the bodies of these functions with Supabase queries and
- * deletes ./seed.ts. Everything is async and returns the same shapes it will
- * return then, so no page or component changes when that happens.
+ * ############################ TEMPORARY SCAFFOLDING ##########################
  *
- * Do not read ./seed.ts directly from a component. Go through this module.
+ * This dispatcher exists for one reason: migrations 0002 and 0003 have not been
+ * applied to Supabase yet, and the site is already live. Switching the queries
+ * straight to Postgres would break the deployed storefront the moment it shipped.
+ *
+ * PRODUCTS_SOURCE=database  -> Postgres (queries.db.ts)
+ * anything else / unset     -> seed data (queries.seed.ts)   [default]
+ *
+ * HOW TO REMOVE THIS FILE, once the migrations are applied and verified:
+ *   1. Set PRODUCTS_SOURCE=database locally and confirm the storefront matches.
+ *   2. Set it in Vercel and confirm the deployed site matches.
+ *   3. Delete queries.seed.ts, lib/products/seed.ts and this dispatcher, then
+ *      rename queries.db.ts to queries.ts.
+ *   4. Drop PRODUCTS_SOURCE from .env.example and docs/ARCHITECTURE.md.
+ *
+ * Do not build anything new on top of the seed path. It is on its way out.
+ * #############################################################################
  */
 
-export type ProductFilters = {
-  q?: string;
-  category?: string;
-  type?: ProductType;
-  price?: "free" | "paid";
-  sort?: SortOption;
-};
+const useDatabase = process.env.PRODUCTS_SOURCE === "database";
 
-function published(product: ProductWithRelations) {
-  return product.status === "published";
-}
+const impl = useDatabase ? db : seed;
 
-function priceOf(product: ProductWithRelations): number {
-  return defaultOffer(product)?.price_cents ?? 0;
-}
+export const listCategories = impl.listCategories;
+export const listProducts = impl.listProducts;
+export const getProductBySlug = impl.getProductBySlug;
+export const listFeaturedProducts = impl.listFeaturedProducts;
+export const listProductsByType = impl.listProductsByType;
+export const getLeadMagnet = impl.getLeadMagnet;
+export const getRelatedProducts = impl.getRelatedProducts;
+export const listProductSlugs = impl.listProductSlugs;
 
-/**
- * Naive relevance match over name, tagline and description.
- *
- * Phase 4 replaces this with the products.search_vector GIN index and
- * websearch_to_tsquery — see docs/DATABASE.md section 4.
- */
-function matchesQuery(product: ProductWithRelations, q: string): boolean {
-  const needle = q.trim().toLowerCase();
-  if (!needle) return true;
+/** Which source is live. Surfaced in the admin overview so it is never a guess. */
+export const productsSource: "database" | "seed" = useDatabase
+  ? "database"
+  : "seed";
 
-  const haystack = [
-    product.name,
-    product.tagline ?? "",
-    product.description ?? "",
-    product.category?.name ?? "",
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  return needle
-    .split(/\s+/)
-    .every((term) => haystack.includes(term));
-}
-
-function sortProducts(
-  products: ProductWithRelations[],
-  sort: SortOption,
-): ProductWithRelations[] {
-  const sorted = [...products];
-
-  switch (sort) {
-    case "newest":
-      return sorted.sort((a, b) =>
-        (b.published_at ?? "").localeCompare(a.published_at ?? ""),
-      );
-    case "price_asc":
-      return sorted.sort((a, b) => priceOf(a) - priceOf(b));
-    case "price_desc":
-      return sorted.sort((a, b) => priceOf(b) - priceOf(a));
-    case "featured":
-    default:
-      return sorted.sort((a, b) => {
-        if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1;
-        return (b.published_at ?? "").localeCompare(a.published_at ?? "");
-      });
-  }
-}
-
-export async function listCategories(): Promise<Category[]> {
-  return [...seedCategories].sort((a, b) => a.sort_order - b.sort_order);
-}
-
-export async function listProducts(
-  filters: ProductFilters = {},
-): Promise<ProductWithRelations[]> {
-  const { q = "", category, type, price, sort = "featured" } = filters;
-
-  const filtered = seedProducts.filter((product) => {
-    if (!published(product)) return false;
-    if (category && product.category?.slug !== category) return false;
-    if (type && product.product_type !== type) return false;
-    if (price === "free" && !isFree(product)) return false;
-    if (price === "paid" && isFree(product)) return false;
-    if (!matchesQuery(product, q)) return false;
-    return true;
-  });
-
-  return sortProducts(filtered, sort);
-}
-
-export async function getProductBySlug(
-  slug: string,
-): Promise<ProductWithRelations | null> {
-  return seedProducts.find((p) => published(p) && p.slug === slug) ?? null;
-}
-
-export async function listFeaturedProducts(
-  limit = 3,
-): Promise<ProductWithRelations[]> {
-  const featured = seedProducts.filter((p) => published(p) && p.is_featured);
-  return sortProducts(featured, "featured").slice(0, limit);
-}
-
-export async function listProductsByType(
-  type: ProductType,
-  limit = 3,
-): Promise<ProductWithRelations[]> {
-  const matching = seedProducts.filter(
-    (p) => published(p) && p.product_type === type,
-  );
-  return sortProducts(matching, "featured").slice(0, limit);
-}
-
-/** The free lead magnet, if one is published. */
-export async function getLeadMagnet(): Promise<ProductWithRelations | null> {
-  return seedProducts.find((p) => published(p) && isFree(p)) ?? null;
-}
-
-/**
- * Related products: same category first, then anything else published.
- * Never returns the product itself.
- */
-export async function getRelatedProducts(
-  product: ProductWithRelations,
-  limit = 3,
-): Promise<ProductWithRelations[]> {
-  const others = seedProducts.filter((p) => published(p) && p.id !== product.id);
-
-  const sameCategory = others.filter(
-    (p) => p.category_id && p.category_id === product.category_id,
-  );
-  const rest = others.filter((p) => !sameCategory.includes(p));
-
-  return [...sameCategory, ...rest].slice(0, limit);
-}
-
-/** Slugs for the sitemap. */
-export async function listProductSlugs(): Promise<
-  { slug: string; updated_at: string }[]
-> {
-  return seedProducts
-    .filter(published)
-    .map(({ slug, updated_at }) => ({ slug, updated_at }));
-}
+export type { ProductFilters } from "@/lib/products/types";

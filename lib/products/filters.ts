@@ -1,5 +1,8 @@
-import type { ProductFilters } from "@/lib/products/queries";
-import type { ProductType, SortOption } from "@/lib/products/types";
+import type {
+  ProductFilters,
+  ProductType,
+  SortOption,
+} from "@/lib/products/types";
 import {
   FILTERABLE_PRODUCT_TYPES,
   SORT_LABELS,

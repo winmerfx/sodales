@@ -4,9 +4,9 @@ Read this first, every session. Update it at the end of every meaningful piece o
 
 # Current Phase
 
-**Phase 3 — Authentication.** Code complete and verified locally. **Blocked on one manual
-step: migration `0001_profiles.sql` has not been run against Supabase**, so signup and login
-cannot work until it is.
+**Phase 4 — Product database and admin.** Code complete. **Three migrations are written but
+none have been applied to Supabase**, so Phases 3 and 4 are both unverified against a real
+database, and the storefront is still reading placeholder seed data.
 
 # Completed
 
@@ -65,7 +65,7 @@ cannot work until it is.
   counts correct; unknown `type` params discarded; empty state renders; canonical and OG tags
   correct on product pages; 7 product pages prerendered.
 
-**Phase 3 — Authentication.**
+**Phase 3 — Authentication.** Deployed, unverified against the database.
 
 - `supabase/migrations/0001_profiles.sql` — first migration. Creates `user_role`, `profiles`,
   the signup trigger, `is_admin()`, RLS policies, and both layers of role protection.
@@ -87,17 +87,43 @@ cannot work until it is.
   `/login?next=…` when anonymous; public routes 200; `/auth/callback` without a code redirects
   to `/login?error=missing_code`. Homepage and product pages still render statically.
 
+**Phase 4 — Product database and admin.**
+
+- `0002_catalog.sql` — categories, products, offers, assets, bundle_items. Enums, CHECK
+  constraints mirroring the admin validation, the `search_vector` GIN index, and RLS that
+  makes drafts invisible to anon at the database level.
+- `0003_storage.sql` — `public-assets` (public read) and `protected-assets` (**no read policy
+  at all**; served only by the Phase 6 download route via service-role signed URLs).
+- `supabase/seed/0001_placeholder_catalog.sql` — the same seven products as the seed module,
+  so switching sources produces an identical storefront rather than an empty one. Kept out of
+  `migrations/` so it can never run automatically against production.
+- `lib/products/queries.db.ts` — Postgres implementation using a new session-less **public
+  client**, so catalog pages stay statically rendered and `generateStaticParams` still works.
+- `lib/products/queries.ts` — temporary dispatcher choosing seed or database.
+- `lib/admin/queries.ts`, `app/admin/actions.ts`, `lib/validation/product.ts`.
+- Admin: overview with catalog counts and a live data-source banner, product list with status
+  filters, create/edit, inline offer and asset editors, category editor.
+- Products are **archived, never deleted** — deletion breaks order history and entitlements.
+- `tsconfig.json` no longer includes `.next/dev/types`; it and `.next/types` declare the same
+  globals and produced phantom errors whenever they drifted.
+
 # In Progress
 
-Phase 3 cannot be fully verified until the migration is applied — signup writes to `profiles`
-via a trigger that does not exist yet.
+Nothing. Everything buildable without database access is built.
 
 # Next Recommended Task
 
-1. **Apply `supabase/migrations/0001_profiles.sql`** and configure auth URLs (see Manual Setup).
-2. Verify signup → confirmation email → login → dashboard, and confirm a non-admin visiting
-   `/admin` lands on `/dashboard`.
-3. Then **Phase 4 — Product database and admin**, which builds directly on this schema.
+**Apply the migrations and verify Phases 3 and 4** before Phase 5 adds payments on top. Order:
+
+1. Run `0001_profiles.sql`, then `0002_catalog.sql`, then `0003_storage.sql`.
+2. Run `supabase/seed/0001_placeholder_catalog.sql`.
+3. Configure auth URLs, sign up, promote yourself to admin (see Manual Setup).
+4. Set `PRODUCTS_SOURCE=database` locally, confirm the storefront is unchanged, then set it in
+   Vercel.
+5. Delete the seed module and dispatcher per the removal steps in `lib/products/queries.ts`.
+6. Regenerate `lib/supabase/types.ts` from the live schema.
+
+Phase 5 (payments) writes real money paths and should not be built on an unverified schema.
 
 # Decisions Made
 
@@ -146,17 +172,25 @@ them); launch catalog; membership plan name, price and inclusions.
 - `q=` search is a naive substring match over name, tagline and description. Phase 4 replaces
   it with the `search_vector` GIN index.
 - Signup, login, password reset and the role guard are **unverified against a real database** —
-  the migration has not been applied. Only the anonymous redirect paths have been tested.
+  no migration has been applied. Only the anonymous redirect paths have been tested.
+- The entire admin surface is **unverified against a real database** for the same reason. Admin
+  pages degrade to an explanatory message rather than crashing when the tables are missing.
+- Migrations 0001-0003 have never been executed anywhere. They are reviewed, not proven.
+- Free/paid filtering and price sorting happen in application code after the query, because
+  both depend on the joined default offer. Correct, but it moves to SQL if the catalog grows
+  past a few dozen products.
 - The `/auth/callback` open-redirect guard was not exercised end to end: the test request was
   rejected at code exchange before reaching the redirect. The check itself is a same-origin
   path test and was reviewed, not proven.
 
 # Manual Setup Required
 
-**Blocking Phase 3 completion — all in the Supabase dashboard:**
+**Blocking Phases 3 and 4 — all in the Supabase dashboard:**
 
-1. **Run the migration.** Open **SQL Editor → New query**, paste the entire contents of
-   `supabase/migrations/0001_profiles.sql`, and Run. It only creates things; it drops nothing.
+1. **Run the migrations, in order.** Open **SQL Editor → New query**, paste the entire contents
+   of each file, and Run — one at a time, checking each succeeds before the next:
+   `supabase/migrations/0001_profiles.sql`, then `0002_catalog.sql`, then `0003_storage.sql`,
+   then `supabase/seed/0001_placeholder_catalog.sql`. All are create-only; none drop anything.
 2. **Authentication → Providers → Email** — confirm it is enabled. Leave "Confirm email" on.
 3. **Authentication → URL Configuration** — set **Site URL** to your Vercel URL, and add both
    `http://localhost:3000/**` and `https://<your-vercel-url>/**` to **Redirect URLs**.
@@ -194,5 +228,6 @@ password to the entire database.
 
 # Last Updated
 
-2026-09-04 — Phase 3 authentication built. Build, typecheck, lint and anonymous-guard runtime
-checks pass. Awaiting migration 0001 to verify against a real database.
+2026-09-04 — Phase 4 catalog schema and admin built. Build, typecheck, lint, storefront
+regression and admin-guard checks pass. Three migrations written and none applied; verifying
+them is the next task.
